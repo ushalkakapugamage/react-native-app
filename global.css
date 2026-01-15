@@ -1,0 +1,206 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ==================== Light Theme ==================== */
+  :root {
+    /* Backgrounds */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9.2%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9.2%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9.2%;
+
+    /* Primary - MediSync Blue #72A8E8 */
+    --primary: 211 72% 68%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Coral for alerts #F8A978 */
+    --secondary: 22 90% 72%;
+    --secondary-foreground: 0 0% 0%;
+
+    /* Muted */
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 32.2%;
+
+    /* Accent */
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9.2%;
+
+    /* Destructive - Danger red #EF5350 */
+    --destructive: 1 83% 63%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders & Inputs */
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 211 72% 68%;
+
+    /* Border Radius */
+    --radius: 0.75rem;
+
+    /* Status Colors */
+    --success: 122 39% 49%;
+    --success-foreground: 0 0% 100%;
+    --warning: 36 100% 58%;
+    --warning-foreground: 0 0% 0%;
+    --danger: 1 83% 63%;
+    --danger-foreground: 0 0% 100%;
+    --info: 211 72% 68%;
+    --info-foreground: 0 0% 100%;
+
+    /* Medication Status */
+    --medication-taken: 122 39% 49%;
+    --medication-missed: 1 83% 63%;
+    --medication-upcoming: 36 100% 58%;
+    --medication-scheduled: 211 72% 68%;
+
+    /* Fall Detection */
+    --fall-detected: 1 83% 63%;
+    --fall-warning: 36 100% 58%;
+    --fall-safe: 122 39% 49%;
+
+    /* Family Monitoring */
+    --family-online: 122 39% 49%;
+    --family-offline: 0 0% 63.9%;
+    --family-alert: 1 83% 63%;
+  }
+
+  /* ==================== Dark Theme ==================== */
+  .dark:root {
+    /* Backgrounds */
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 9.2%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+
+    /* Primary - MediSync Blue */
+    --primary: 211 72% 68%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Coral */
+    --secondary: 22 90% 72%;
+    --secondary-foreground: 0 0% 0%;
+
+    /* Muted */
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+
+    /* Accent */
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+
+    /* Destructive */
+    --destructive: 1 83% 63%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders & Inputs */
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 211 72% 68%;
+
+    /* Border Radius */
+    --radius: 0.75rem;
+
+    /* Status Colors */
+    --success: 122 39% 49%;
+    --success-foreground: 0 0% 100%;
+    --warning: 36 100% 58%;
+    --warning-foreground: 0 0% 0%;
+    --danger: 1 83% 63%;
+    --danger-foreground: 0 0% 100%;
+    --info: 211 72% 68%;
+    --info-foreground: 0 0% 100%;
+
+    /* Medication Status */
+    --medication-taken: 122 39% 49%;
+    --medication-missed: 1 83% 63%;
+    --medication-upcoming: 36 100% 58%;
+    --medication-scheduled: 211 72% 68%;
+
+    /* Fall Detection */
+    --fall-detected: 1 83% 63%;
+    --fall-warning: 36 100% 58%;
+    --fall-safe: 122 39% 49%;
+
+    /* Family Monitoring */
+    --family-online: 122 39% 49%;
+    --family-offline: 0 0% 32.2%;
+    --family-alert: 1 83% 63%;
+  }
+}
+
+/* ==================== Base Styles ==================== */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* ==================== Utility Classes ==================== */
+@layer utilities {
+  /* Status Badge Utilities */
+  .badge-success {
+    @apply bg-success text-success-foreground;
+  }
+
+  .badge-warning {
+    @apply bg-warning text-warning-foreground;
+  }
+
+  .badge-danger {
+    @apply bg-danger text-danger-foreground;
+  }
+
+  .badge-info {
+    @apply bg-info text-info-foreground;
+  }
+
+  /* Medication Status Utilities */
+  .status-taken {
+    @apply bg-[hsl(var(--medication-taken))] text-white;
+  }
+
+  .status-missed {
+    @apply bg-[hsl(var(--medication-missed))] text-white;
+  }
+
+  .status-upcoming {
+    @apply bg-[hsl(var(--medication-upcoming))] text-black;
+  }
+
+  .status-scheduled {
+    @apply bg-[hsl(var(--medication-scheduled))] text-white;
+  }
+
+  /* Safe Area Utilities for Mobile */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Smooth Transitions */
+  .transition-theme {
+    @apply transition-colors duration-200 ease-in-out;
+  }
+}
