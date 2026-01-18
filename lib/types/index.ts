@@ -39,6 +39,8 @@ export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'frida
 
 export type MealTiming = 'before' | 'after' | 'with' | 'anytime';
 
+export type PlanStatus = 'active' | 'paused' | 'completed';
+
 export interface MedicationSchedule {
   days: DayOfWeek[];
   times: string[]; // e.g., ['08:00', '14:00', '20:00']
@@ -50,6 +52,22 @@ export interface ReminderSettings {
   minutesBefore: number; // default 15
   onTime: boolean;
   minutesAfter: number; // default 15
+}
+
+export interface MedicationPlan {
+  id: string;
+  userId: string;
+  planName: string;                    // e.g., "Diabetes Management", "Heart Condition Treatment"
+  condition?: string;                  // e.g., "Type 2 Diabetes", "Hypertension" (optional)
+  prescribedBy?: string;               // Doctor name (optional)
+  prescriptionImage?: string;          // Image of the prescription (base64 or URI)
+  prescriptionDate?: Date;             // When prescribed
+  medications: Medication[];           // Array of medications in this plan
+  notes?: string;                      // Plan-level notes
+  isActive: boolean;
+  status: PlanStatus;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Medication {
@@ -75,6 +93,7 @@ export interface Medication {
 export type MedicationEventStatus = 'pending' | 'taken' | 'missed' | 'skipped';
 
 export interface MedicationEvent {
+  planId: string;
   id: string;
   medicationId: string;
   scheduledTime: Date;

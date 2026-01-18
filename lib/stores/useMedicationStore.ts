@@ -1,174 +1,285 @@
 /**
  * MediSync Medication Store
- * Manages medication data with persistence
+ * Manages medication plans and medications with persistence
+ *
+ * Architecture: Users create Medication Plans (prescriptions from doctors)
+ * and add individual medications to each plan.
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import type { Medication, MedicationEvent, DayOfWeek } from '@/lib/types';
+import type { MedicationPlan, Medication, MedicationEvent, DayOfWeek } from '@/lib/types';
 
-interface MedicationState {
+interface UpcomingMedication {
+  plan: MedicationPlan;
+  medication: Medication;
+  nextDose: Date;
+  time: string;
+}
+
+interface MedicationStore {
   // State
-  medications: Medication[];
+  plans: MedicationPlan[];
   events: MedicationEvent[];
   isLoading: boolean;
 
-  // Medication CRUD
-  addMedication: (medication: Medication) => void;
-  updateMedication: (id: string, updates: Partial<Medication>) => void;
-  deleteMedication: (id: string) => void;
-  getMedicationById: (id: string) => Medication | undefined;
+  // Plan CRUD
+  addPlan: (plan: MedicationPlan) => void;
+  updatePlan: (planId: string, updates: Partial<MedicationPlan>) => void;
+  deletePlan: (planId: string) => void;
+  getPlanById: (planId: string) => MedicationPlan | undefined;
 
-  // Event Management
+  // Medication CRUD (within plans)
+  addMedicationToPlan: (planId: string, medication: Medication) => void;
+  updateMedication: (planId: string, medicationId: string, updates: Partial<Medication>) => void;
+  deleteMedication: (planId: string, medicationId: string) => void;
+  getMedicationById: (planId: string, medicationId: string) => Medication | undefined;
+
+  // Events
   addEvent: (event: MedicationEvent) => void;
-  updateEvent: (id: string, updates: Partial<MedicationEvent>) => void;
-  deleteEvent: (id: string) => void;
+  updateEvent: (eventId: string, updates: Partial<MedicationEvent>) => void;
+  deleteEvent: (eventId: string) => void;
+  getEventsByPlan: (planId: string) => MedicationEvent[];
+  getEventsByMedication: (medicationId: string) => MedicationEvent[];
 
-  // Helper methods
-  getActiveMedications: () => Medication[];
-  getInactiveMedications: () => Medication[];
-  getUpcomingMedications: (hours?: number) => Medication[];
-  getMedicationsByDay: (day: DayOfWeek) => Medication[];
+  // Helpers
+  getAllMedications: () => Medication[];
+  getActivePlans: () => MedicationPlan[];
+  getPausedPlans: () => MedicationPlan[];
+  getCompletedPlans: () => MedicationPlan[];
+  getUpcomingMedications: (hours?: number) => UpcomingMedication[];
+  getMedicationsForToday: () => Array<{ plan: MedicationPlan; medication: Medication }>;
+  getTodaysMedicationsCount: () => number;
   getActiveCount: () => number;
-  getMedicationsForToday: () => Medication[];
   getTodayEvents: () => MedicationEvent[];
   getPendingEvents: () => MedicationEvent[];
   getTakenEventsCount: () => number;
   getMissedEventsCount: () => number;
   calculateAdherenceRate: (days?: number) => number;
+  calculatePlanAdherenceRate: (planId: string, days?: number) => number;
 
   // Utility
   setLoading: (loading: boolean) => void;
   clearAll: () => void;
 }
 
-export const useMedicationStore = create<MedicationState>()(
+export const useMedicationStore = create<MedicationStore>()(
   persist(
     (set, get) => ({
       // Initial state
-      medications: [],
+      plans: [],
       events: [],
       isLoading: false,
 
-      // Add medication
-      addMedication: (medication: Medication) => {
+      // ==================== Plan CRUD ====================
+
+      addPlan: (plan: MedicationPlan) => {
         set((state) => ({
-          medications: [...state.medications, medication],
+          plans: [...state.plans, plan],
         }));
       },
 
-      // Update medication
-      updateMedication: (id: string, updates: Partial<Medication>) => {
+      updatePlan: (planId: string, updates: Partial<MedicationPlan>) => {
         set((state) => ({
-          medications: state.medications.map((med) =>
-            med.id === id ? { ...med, ...updates } : med
+          plans: state.plans.map((plan) =>
+            plan.id === planId
+              ? { ...plan, ...updates, updatedAt: new Date() }
+              : plan
           ),
         }));
       },
 
-      // Delete medication
-      deleteMedication: (id: string) => {
+      deletePlan: (planId: string) => {
         set((state) => ({
-          medications: state.medications.filter((med) => med.id !== id),
-          events: state.events.filter((event) => event.medicationId !== id),
+          plans: state.plans.filter((plan) => plan.id !== planId),
+          events: state.events.filter((event) => event.planId !== planId),
         }));
       },
 
-      // Get medication by ID
-      getMedicationById: (id: string) => {
-        return get().medications.find((med) => med.id === id);
+      getPlanById: (planId: string) => {
+        return get().plans.find((plan) => plan.id === planId);
       },
 
-      // Add event
+      // ==================== Medication CRUD ====================
+
+      addMedicationToPlan: (planId: string, medication: Medication) => {
+        set((state) => ({
+          plans: state.plans.map((plan) =>
+            plan.id === planId
+              ? {
+                  ...plan,
+                  medications: [...plan.medications, medication],
+                  updatedAt: new Date(),
+                }
+              : plan
+          ),
+        }));
+      },
+
+      updateMedication: (planId: string, medicationId: string, updates: Partial<Medication>) => {
+        set((state) => ({
+          plans: state.plans.map((plan) =>
+            plan.id === planId
+              ? {
+                  ...plan,
+                  medications: plan.medications.map((med) =>
+                    med.id === medicationId ? { ...med, ...updates } : med
+                  ),
+                  updatedAt: new Date(),
+                }
+              : plan
+          ),
+        }));
+      },
+
+      deleteMedication: (planId: string, medicationId: string) => {
+        set((state) => ({
+          plans: state.plans.map((plan) =>
+            plan.id === planId
+              ? {
+                  ...plan,
+                  medications: plan.medications.filter((med) => med.id !== medicationId),
+                  updatedAt: new Date(),
+                }
+              : plan
+          ),
+          events: state.events.filter((event) => event.medicationId !== medicationId),
+        }));
+      },
+
+      getMedicationById: (planId: string, medicationId: string) => {
+        const plan = get().plans.find((p) => p.id === planId);
+        return plan?.medications.find((m) => m.id === medicationId);
+      },
+
+      // ==================== Event Management ====================
+
       addEvent: (event: MedicationEvent) => {
         set((state) => ({
           events: [...state.events, event],
         }));
       },
 
-      // Update event
-      updateEvent: (id: string, updates: Partial<MedicationEvent>) => {
+      updateEvent: (eventId: string, updates: Partial<MedicationEvent>) => {
         set((state) => ({
           events: state.events.map((event) =>
-            event.id === id ? { ...event, ...updates } : event
+            event.id === eventId ? { ...event, ...updates } : event
           ),
         }));
       },
 
-      // Delete event
-      deleteEvent: (id: string) => {
+      deleteEvent: (eventId: string) => {
         set((state) => ({
-          events: state.events.filter((event) => event.id !== id),
+          events: state.events.filter((event) => event.id !== eventId),
         }));
       },
 
-      // Get active medications
-      getActiveMedications: () => {
-        return get().medications.filter((med) => med.isActive);
+      getEventsByPlan: (planId: string) => {
+        return get().events.filter((event) => event.planId === planId);
       },
 
-      // Get inactive medications
-      getInactiveMedications: () => {
-        return get().medications.filter((med) => !med.isActive);
+      getEventsByMedication: (medicationId: string) => {
+        return get().events.filter((event) => event.medicationId === medicationId);
       },
 
-      // Get upcoming medications (next N hours)
-      getUpcomingMedications: (hours: number = 24) => {
+      // ==================== Helpers ====================
+
+      getAllMedications: () => {
+        return get().plans.flatMap((plan) => plan.medications);
+      },
+
+      getActivePlans: () => {
+        return get().plans.filter((plan) => plan.isActive && plan.status === 'active');
+      },
+
+      getPausedPlans: () => {
+        return get().plans.filter((plan) => plan.status === 'paused');
+      },
+
+      getCompletedPlans: () => {
+        return get().plans.filter((plan) => plan.status === 'completed');
+      },
+
+      getUpcomingMedications: (hours: number = 24): UpcomingMedication[] => {
         const now = new Date();
         const futureTime = new Date(now.getTime() + hours * 60 * 60 * 1000);
+        const dayNames: DayOfWeek[] = [
+          'sunday',
+          'monday',
+          'tuesday',
+          'wednesday',
+          'thursday',
+          'friday',
+          'saturday',
+        ];
+        const today = dayNames[now.getDay()];
 
-        return get()
-          .medications.filter((med) => {
-            if (!med.isActive) return false;
+        const upcoming: UpcomingMedication[] = [];
 
-            // Check if any scheduled time is within the next N hours
-            const dayNames: DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-            const today = dayNames[now.getDay()];
-            if (!med.schedule.days.includes(today)) return false;
+        get().plans.forEach((plan) => {
+          if (!plan.isActive || plan.status !== 'active') return;
 
-            return med.schedule.times.some((time) => {
+          plan.medications.forEach((medication) => {
+            if (!medication.isActive) return;
+            if (!medication.schedule.days.includes(today)) return;
+
+            medication.schedule.times.forEach((time) => {
               const [hours, minutes] = time.split(':').map(Number);
               const scheduledTime = new Date(now);
               scheduledTime.setHours(hours, minutes, 0, 0);
 
-              return scheduledTime >= now && scheduledTime <= futureTime;
+              if (scheduledTime >= now && scheduledTime <= futureTime) {
+                upcoming.push({
+                  plan,
+                  medication,
+                  nextDose: scheduledTime,
+                  time,
+                });
+              }
             });
-          })
-          .sort((a, b) => {
-            const aTime = a.schedule.times[0];
-            const bTime = b.schedule.times[0];
-            return aTime.localeCompare(bTime);
           });
+        });
+
+        // Sort by next dose time
+        return upcoming.sort(
+          (a, b) => a.nextDose.getTime() - b.nextDose.getTime()
+        );
       },
 
-      // Get medications by day of week
-      getMedicationsByDay: (day: DayOfWeek) => {
-        return get()
-          .medications.filter(
-            (med) => med.isActive && med.schedule.days.includes(day)
-          )
-          .sort((a, b) => {
-            const aTime = a.schedule.times[0];
-            const bTime = b.schedule.times[0];
-            return aTime.localeCompare(bTime);
-          });
-      },
-
-      // Get active medication count
-      getActiveCount: () => {
-        return get().medications.filter((med) => med.isActive).length;
-      },
-
-      // Get medications for today
       getMedicationsForToday: () => {
         const today = new Date()
           .toLocaleDateString('en-US', { weekday: 'long' })
           .toLowerCase() as DayOfWeek;
-        return get().getMedicationsByDay(today);
+
+        const result: Array<{ plan: MedicationPlan; medication: Medication }> = [];
+
+        get().plans.forEach((plan) => {
+          if (!plan.isActive || plan.status !== 'active') return;
+
+          plan.medications.forEach((medication) => {
+            if (medication.isActive && medication.schedule.days.includes(today)) {
+              result.push({ plan, medication });
+            }
+          });
+        });
+
+        // Sort by first scheduled time
+        return result.sort((a, b) => {
+          const aTime = a.medication.schedule.times[0] || '23:59';
+          const bTime = b.medication.schedule.times[0] || '23:59';
+          return aTime.localeCompare(bTime);
+        });
       },
 
-      // Get today's events
+      getTodaysMedicationsCount: () => {
+        return get().getMedicationsForToday().length;
+      },
+
+      getActiveCount: () => {
+        return get().getAllMedications().filter((med) => med.isActive).length;
+      },
+
       getTodayEvents: () => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -181,27 +292,23 @@ export const useMedicationStore = create<MedicationState>()(
         });
       },
 
-      // Get pending events
       getPendingEvents: () => {
         return get().events.filter((event) => event.status === 'pending');
       },
 
-      // Get taken events count for today
       getTakenEventsCount: () => {
         return get()
           .getTodayEvents()
           .filter((event) => event.status === 'taken').length;
       },
 
-      // Get missed events count for today
       getMissedEventsCount: () => {
         return get()
           .getTodayEvents()
           .filter((event) => event.status === 'missed').length;
       },
 
-      // Calculate adherence rate for last N days
-      calculateAdherenceRate: (days: number = 7) => {
+      calculateAdherenceRate: (days: number = 7): number => {
         const now = new Date();
         const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
         startDate.setHours(0, 0, 0, 0);
@@ -216,8 +323,7 @@ export const useMedicationStore = create<MedicationState>()(
         });
 
         if (events.length === 0) {
-          // If no events, check if there are active medications
-          const activeMeds = get().getActiveMedications();
+          const activeMeds = get().getAllMedications().filter((m) => m.isActive);
           return activeMeds.length > 0 ? 0 : 100;
         }
 
@@ -225,40 +331,63 @@ export const useMedicationStore = create<MedicationState>()(
         return Math.round((takenCount / events.length) * 100);
       },
 
-      // Set loading state
+      calculatePlanAdherenceRate: (planId: string, days: number = 7): number => {
+        const now = new Date();
+        const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+        startDate.setHours(0, 0, 0, 0);
+
+        const events = get().events.filter((event) => {
+          const scheduledTime = new Date(event.scheduledTime);
+          return (
+            event.planId === planId &&
+            scheduledTime >= startDate &&
+            scheduledTime <= now &&
+            (event.status === 'taken' || event.status === 'missed')
+          );
+        });
+
+        if (events.length === 0) {
+          const plan = get().getPlanById(planId);
+          const activeMeds = plan?.medications.filter((m) => m.isActive) || [];
+          return activeMeds.length > 0 ? 0 : 100;
+        }
+
+        const takenCount = events.filter((event) => event.status === 'taken').length;
+        return Math.round((takenCount / events.length) * 100);
+      },
+
+      // ==================== Utility ====================
+
       setLoading: (loading: boolean) => {
         set({ isLoading: loading });
       },
 
-      // Clear all medications and events
       clearAll: () => {
         set({
-          medications: [],
+          plans: [],
           events: [],
         });
       },
     }),
     {
-      name: 'medisync_medications',
+      name: 'medisync_medication_plans',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
-        medications: state.medications,
+        plans: state.plans,
         events: state.events,
       }),
     }
   )
 );
 
-// Selectors
-export const selectMedications = (state: MedicationState) => state.medications;
-export const selectEvents = (state: MedicationState) => state.events;
-export const selectActiveMedications = (state: MedicationState) =>
-  state.getActiveMedications();
-export const selectUpcomingMedications = (state: MedicationState) =>
-  state.getUpcomingMedications();
-export const selectMedicationsForToday = (state: MedicationState) =>
-  state.getMedicationsForToday();
-export const selectActiveCount = (state: MedicationState) => state.getActiveCount();
-export const selectAdherenceRate = (state: MedicationState) =>
-  state.calculateAdherenceRate();
-export const selectIsLoading = (state: MedicationState) => state.isLoading;
+// ==================== Selectors ====================
+
+export const selectPlans = (state: MedicationStore) => state.plans;
+export const selectEvents = (state: MedicationStore) => state.events;
+export const selectActivePlans = (state: MedicationStore) => state.getActivePlans();
+export const selectAllMedications = (state: MedicationStore) => state.getAllMedications();
+export const selectUpcomingMedications = (state: MedicationStore) => state.getUpcomingMedications();
+export const selectMedicationsForToday = (state: MedicationStore) => state.getMedicationsForToday();
+export const selectActiveCount = (state: MedicationStore) => state.getActiveCount();
+export const selectAdherenceRate = (state: MedicationStore) => state.calculateAdherenceRate();
+export const selectIsLoading = (state: MedicationStore) => state.isLoading;
