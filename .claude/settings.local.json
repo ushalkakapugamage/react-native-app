@@ -3,7 +3,11 @@
     "allow": [
       "Bash(mkdir:*)",
       "Bash(npx expo install:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npx expo start:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(npm ls:*)",
+      "Bash(npx tsc --noEmit)"
     ]
   }
 }

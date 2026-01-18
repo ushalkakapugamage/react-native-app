@@ -51,7 +51,7 @@ interface CardViewProps extends ViewProps, BaseCardProps {
 
 // Pressable card
 interface CardPressableProps
-  extends React.ComponentProps<typeof Pressable>,
+  extends Omit<React.ComponentProps<typeof Pressable>, 'children'>,
     BaseCardProps {
   pressable: true;
 }

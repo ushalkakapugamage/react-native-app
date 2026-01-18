@@ -90,7 +90,7 @@ export default function RootLayout() {
             <NavigationWrapper>
               <Stack
                 screenOptions={{
-                  headerShown: true,
+                  headerShown: false,
                   contentStyle: {
                     backgroundColor: 'transparent',
                   },

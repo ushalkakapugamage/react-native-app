@@ -5,7 +5,7 @@
 
 import { cn } from '@/lib/utils';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { forwardRef } from 'react';
+import React, { forwardRef } from 'react';
 import { Image, type ImageProps, Text, View } from 'react-native';
 
 const avatarVariants = cva(

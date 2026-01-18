@@ -14,6 +14,8 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: 'bg-neutral-100 dark:bg-neutral-800',
+        secondary: 'bg-neutral-200 dark:bg-neutral-700',
+        outline: 'bg-transparent border border-border',
         success: 'bg-[#4CAF50]/10',
         warning: 'bg-[#FFA726]/10',
         danger: 'bg-[#EF5350]/10',
@@ -36,6 +38,8 @@ const badgeTextVariants = cva('font-medium', {
   variants: {
     variant: {
       default: 'text-neutral-700 dark:text-neutral-300',
+      secondary: 'text-neutral-600 dark:text-neutral-400',
+      outline: 'text-foreground',
       success: 'text-[#4CAF50]',
       warning: 'text-[#FFA726]',
       danger: 'text-[#EF5350]',
@@ -57,6 +61,8 @@ const badgeDotVariants = cva('rounded-full', {
   variants: {
     variant: {
       default: 'bg-neutral-700 dark:bg-neutral-300',
+      secondary: 'bg-neutral-600 dark:bg-neutral-400',
+      outline: 'bg-foreground',
       success: 'bg-[#4CAF50]',
       warning: 'bg-[#FFA726]',
       danger: 'bg-[#EF5350]',

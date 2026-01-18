@@ -123,7 +123,8 @@ export const useMedicationStore = create<MedicationState>()(
             if (!med.isActive) return false;
 
             // Check if any scheduled time is within the next N hours
-            const today = now.toLocaleLowerCase().split(' ')[0] as DayOfWeek;
+            const dayNames: DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            const today = dayNames[now.getDay()];
             if (!med.schedule.days.includes(today)) return false;
 
             return med.schedule.times.some((time) => {

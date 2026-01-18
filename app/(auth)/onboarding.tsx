@@ -52,7 +52,7 @@ import Animated, {
   FadeOutRight,
 } from 'react-native-reanimated';
 
-type Gender = 'male' | 'female' | 'other' | 'prefer_not_to_say';
+type Gender = 'male' | 'female' | 'other' | 'prefer-not-to-say';
 type BloodType = 'A+' | 'A-' | 'B+' | 'B-' | 'O+' | 'O-' | 'AB+' | 'AB-' | 'Unknown';
 type HeightUnit = 'cm' | 'ft';
 type WeightUnit = 'kg' | 'lbs';
@@ -86,11 +86,32 @@ export default function OnboardingScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Step 1: Profile Data
-  const [profileData, setProfileData] = useState<ProfileData>({
-    photo: user?.avatar,
-    name: user?.name || '',
-    dateOfBirth: user?.dateOfBirth || new Date(),
-    gender: (user?.gender as Gender) || 'prefer_not_to_say',
+  const [profileData, setProfileData] = useState<ProfileData>(() => {
+    // Ensure dateOfBirth is a valid Date object
+    let dob: Date;
+    if (user?.dateOfBirth) {
+      // Handle Firestore Timestamp, string, or Date
+      if (typeof (user.dateOfBirth as any)?.toDate === 'function') {
+        dob = (user.dateOfBirth as any).toDate();
+      } else if (typeof user.dateOfBirth === 'string' || typeof user.dateOfBirth === 'number') {
+        dob = new Date(user.dateOfBirth);
+      } else {
+        dob = user.dateOfBirth as Date;
+      }
+      // Validate the date
+      if (isNaN(dob.getTime())) {
+        dob = new Date();
+      }
+    } else {
+      dob = new Date();
+    }
+
+    return {
+      photo: user?.avatar,
+      name: user?.name || '',
+      dateOfBirth: dob,
+      gender: (user?.gender as Gender) || 'prefer_not_to_say',
+    };
   });
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -408,9 +429,7 @@ export default function OnboardingScreen() {
         <View className="gap-2">
           {[
             { value: 'male', label: 'Male' },
-            { value: 'female', label: 'Female' },
-            { value: 'other', label: 'Other' },
-            { value: 'prefer_not_to_say', label: 'Prefer not to say' },
+            { value: 'female', label: 'Female' }
           ].map((option) => (
             <Pressable
               key={option.value}

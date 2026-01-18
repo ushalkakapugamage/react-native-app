@@ -63,17 +63,10 @@ import Animated, {
   withSpring,
   useAnimatedStyle,
   withDelay,
-  withSequence,
-  withTiming,
-  runOnJS,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-
-// Animated wrapper components
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-const AnimatedView = Animated.createAnimatedComponent(View);
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -88,7 +81,6 @@ export default function DashboardScreen() {
   const getMedicationsForToday = useMedicationStore(
     (state) => state.getMedicationsForToday
   );
-  const updateEvent = useMedicationStore((state) => state.updateEvent);
   const addEvent = useMedicationStore((state) => state.addEvent);
   const notifications = useNotificationStore((state) => state.notifications);
   const members = useFamilyStore((state) => state.members);
@@ -293,7 +285,7 @@ export default function DashboardScreen() {
             return;
           }
           const result = await ImagePicker.launchCameraAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: ['images'],
             allowsEditing: true,
             quality: 0.8,
           });
@@ -312,7 +304,7 @@ export default function DashboardScreen() {
             return;
           }
           const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: ['images'],
             allowsEditing: true,
             quality: 0.8,
           });

@@ -164,5 +164,4 @@ function isValidThemeMode(mode: string): mode is ThemeMode {
   return mode === 'light' || mode === 'dark' || mode === 'system';
 }
 
-// Export types
-export type { ThemeContextType, ThemeProviderProps };
+// Types are exported via interface declarations above
