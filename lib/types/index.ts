@@ -29,9 +29,9 @@ export interface User {
 
 // ==================== Medication Types ====================
 
-export type DosageUnit = 'mg' | 'ml' | 'tablets' | 'drops' | 'puffs';
+export type DosageUnit = 'mg' | 'ml' | 'tablets' | 'drops' | 'puffs' | 'patches' | 'units';
 
-export type MedicationType = 'tablet' | 'syrup' | 'injection' | 'drops' | 'inhaler' | 'cream';
+export type MedicationType = 'tablet' | 'capsule' | 'syrup' | 'injection' | 'drops' | 'inhaler' | 'patch' | 'cream' | 'other';
 
 export type MedicationFrequency = 'daily' | 'weekly' | 'monthly' | 'as-needed';
 
@@ -72,7 +72,7 @@ export interface MedicationPlan {
 
 export interface Medication {
   id: string;
-  userId: string;
+  planId: string;                      // Reference to parent plan
   name: string;
   dosage: string;
   dosageUnit: DosageUnit;
@@ -82,8 +82,7 @@ export interface Medication {
   reminders: ReminderSettings;
   startDate: Date;
   endDate?: Date;
-  prescriptionImage?: string;
-  notes?: string;
+  notes?: string;                      // Medication-specific notes
   isActive: boolean;
   createdAt: Date;
 }
@@ -162,7 +161,7 @@ export interface AuthState {
 }
 
 export interface MedicationState {
-  medications: Medication[];
+  plans: MedicationPlan[];
   events: MedicationEvent[];
   isLoading: boolean;
 }

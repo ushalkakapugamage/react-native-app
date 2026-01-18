@@ -73,7 +73,9 @@ export default function DashboardScreen() {
 
   // Store state
   const { user } = useAuthStore();
-  const medications = useMedicationStore((state) => state.medications);
+  const plans = useMedicationStore((state) => state.plans);
+  const getAllMedications = useMedicationStore((state) => state.getAllMedications);
+  const getActivePlans = useMedicationStore((state) => state.getActivePlans);
   const events = useMedicationStore((state) => state.events);
   const calculateAdherenceRate = useMedicationStore(
     (state) => state.calculateAdherenceRate
@@ -81,6 +83,8 @@ export default function DashboardScreen() {
   const getMedicationsForToday = useMedicationStore(
     (state) => state.getMedicationsForToday
   );
+  const addPlan = useMedicationStore((state) => state.addPlan);
+  const addMedicationToPlan = useMedicationStore((state) => state.addMedicationToPlan);
   const addEvent = useMedicationStore((state) => state.addEvent);
   const notifications = useNotificationStore((state) => state.notifications);
   const members = useFamilyStore((state) => state.members);
@@ -147,6 +151,13 @@ export default function DashboardScreen() {
   }, [events, calculateAdherenceRate]);
 
   /**
+   * Get active plans count
+   */
+  const activePlansCount = useMemo(() => {
+    return getActivePlans().length;
+  }, [plans, getActivePlans]);
+
+  /**
    * Get upcoming reminders count (next 24 hours)
    */
   const upcomingRemindersCount = useMemo(() => {
@@ -154,14 +165,14 @@ export default function DashboardScreen() {
     const todayMeds = getMedicationsForToday();
     let reminderCount = 0;
 
-    todayMeds.forEach((med) => {
-      if (med.reminders.enabled) {
-        reminderCount += med.schedule.times.length;
+    todayMeds.forEach(({ medication }) => {
+      if (medication.reminders.enabled) {
+        reminderCount += medication.schedule.times.length;
       }
     });
 
     return reminderCount;
-  }, [medications, getMedicationsForToday]);
+  }, [plans, getMedicationsForToday]);
 
   /**
    * Get upcoming medications (next 3)
@@ -174,19 +185,21 @@ export default function DashboardScreen() {
     // Create list of upcoming medication doses
     const upcomingDoses: Array<{
       id: string;
+      planId: string;
       medicationId: string;
       name: string;
       dosage: string;
+      planName: string;
       time: string;
       status: 'pending' | 'taken' | 'missed' | 'scheduled';
     }> = [];
 
-    todayMeds.forEach((med) => {
-      med.schedule.times.forEach((time, index) => {
+    todayMeds.forEach(({ plan, medication }) => {
+      medication.schedule.times.forEach((time, index) => {
         // Check if there's an event for this time
         const existingEvent = events.find(
           (e) =>
-            e.medicationId === med.id &&
+            e.medicationId === medication.id &&
             new Date(e.scheduledTime).toDateString() === now.toDateString() &&
             new Date(e.scheduledTime).getHours() === parseInt(time.split(':')[0]) &&
             new Date(e.scheduledTime).getMinutes() === parseInt(time.split(':')[1])
@@ -200,10 +213,12 @@ export default function DashboardScreen() {
         }
 
         upcomingDoses.push({
-          id: `${med.id}-${index}`,
-          medicationId: med.id,
-          name: med.name,
-          dosage: `${med.dosage} ${med.dosageUnit}`,
+          id: `${medication.id}-${index}`,
+          planId: plan.id,
+          medicationId: medication.id,
+          name: medication.name,
+          dosage: `${medication.dosage} ${medication.dosageUnit}`,
+          planName: plan.planName,
           time: formatTime(time),
           status,
         });
@@ -215,7 +230,7 @@ export default function DashboardScreen() {
       .sort((a, b) => a.time.localeCompare(b.time))
       .filter((dose) => dose.status === 'pending' || dose.status === 'scheduled')
       .slice(0, 3);
-  }, [medications, events, getMedicationsForToday]);
+  }, [plans, events, getMedicationsForToday]);
 
   /**
    * Format time to 12-hour format
@@ -234,7 +249,7 @@ export default function DashboardScreen() {
     const recent = getRecentActivities(5);
 
     // If no activities in store, show mock data for demo
-    if (recent.length === 0 && medications.length === 0) {
+    if (recent.length === 0 && plans.length === 0) {
       return [
         {
           id: 'mock-1',
@@ -245,7 +260,7 @@ export default function DashboardScreen() {
         {
           id: 'mock-2',
           type: 'reminder_sent' as ActivityType,
-          description: 'Add your first medication to get started',
+          description: 'Create your first medication plan to get started',
           time: 'Now',
         },
       ];
@@ -257,7 +272,7 @@ export default function DashboardScreen() {
       description: activity.description,
       time: formatRelativeTime(activity.timestamp),
     }));
-  }, [activities, getRecentActivities, medications.length]);
+  }, [activities, getRecentActivities, plans.length]);
 
   /**
    * Pull to refresh handler
@@ -272,65 +287,20 @@ export default function DashboardScreen() {
   }, []);
 
   /**
-   * Handle upload prescription
+   * Handle upload prescription - navigate to plan creation
    */
-  const handleUploadPrescription = async () => {
-    Alert.alert('Upload Prescription', 'Choose an option', [
-      {
-        text: 'Take Photo',
-        onPress: async () => {
-          const { status } = await ImagePicker.requestCameraPermissionsAsync();
-          if (status !== 'granted') {
-            Alert.alert('Permission Denied', 'Camera permission is required.');
-            return;
-          }
-          const result = await ImagePicker.launchCameraAsync({
-            mediaTypes: ['images'],
-            allowsEditing: true,
-            quality: 0.8,
-          });
-          if (!result.canceled && result.assets[0]) {
-            // Navigate to add medication with image
-            Alert.alert('Success', 'Prescription captured! (Feature coming soon)');
-          }
-        },
-      },
-      {
-        text: 'Choose from Library',
-        onPress: async () => {
-          const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          if (status !== 'granted') {
-            Alert.alert('Permission Denied', 'Photo library permission is required.');
-            return;
-          }
-          const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
-            allowsEditing: true,
-            quality: 0.8,
-          });
-          if (!result.canceled && result.assets[0]) {
-            // Navigate to add medication with image
-            Alert.alert('Success', 'Prescription selected! (Feature coming soon)');
-          }
-        },
-      },
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-    ]);
+  const handleUploadPrescription = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Navigate to plan creation where user can upload prescription
+    router.push('/plan/add');
   };
 
   /**
    * Handle mark medication as taken
    */
   const handleMarkAsTaken = useCallback(
-    (medicationId: string, time: string) => {
+    (planId: string, medicationId: string, time: string, medName: string, dosage: string) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-      // Find the medication
-      const med = medications.find((m) => m.id === medicationId);
-      if (!med) return;
 
       // Create or update the event
       const now = new Date();
@@ -338,6 +308,7 @@ export default function DashboardScreen() {
 
       addEvent({
         id: eventId,
+        planId,
         medicationId,
         scheduledTime: now,
         takenTime: now,
@@ -348,13 +319,13 @@ export default function DashboardScreen() {
       addActivity({
         type: 'medication_taken',
         title: 'Medication Taken',
-        description: `Took ${med.name} ${med.dosage} ${med.dosageUnit}`,
-        metadata: { medicationId, time },
+        description: `Took ${medName} ${dosage}`,
+        metadata: { planId, medicationId, time },
       });
 
-      Alert.alert('Success', `${med.name} marked as taken!`);
+      Alert.alert('Success', `${medName} marked as taken!`);
     },
-    [medications, addEvent, addActivity]
+    [addEvent, addActivity]
   );
 
   /**
@@ -536,6 +507,14 @@ export default function DashboardScreen() {
               icon={Pill}
               iconColor="text-primary"
               iconBgColor="bg-primary/10"
+              value={activePlansCount}
+              label="Active Plans"
+              onPress={() => router.push('/(tabs)/medications')}
+            />
+            <StatCard
+              icon={Clock}
+              iconColor="text-info"
+              iconBgColor="bg-info/10"
               value={todaysMedicationsCount}
               label="Today's Meds"
               onPress={() => router.push('/(tabs)/medications')}
@@ -593,9 +572,9 @@ export default function DashboardScreen() {
               icon={Plus}
               iconColor="text-success"
               iconBgColor="bg-success/10"
-              title="Add Medicine"
-              subtitle="Manually add medication"
-              onPress={() => Alert.alert('Add Medicine', 'Feature coming soon')}
+              title="Create Plan"
+              subtitle="Add medication plan"
+              onPress={() => router.push('/plan/add')}
             />
           </View>
 
@@ -605,8 +584,8 @@ export default function DashboardScreen() {
               icon={List}
               iconColor="text-secondary"
               iconBgColor="bg-secondary/10"
-              title="My Medications"
-              subtitle="View all medications"
+              title="My Plans"
+              subtitle="View medication plans"
               onPress={() => router.push('/(tabs)/medications')}
             />
             <FeatureCard
@@ -681,6 +660,9 @@ export default function DashboardScreen() {
                         <Text className="mt-1 text-sm text-muted-foreground">
                           {med.dosage}
                         </Text>
+                        <Text className="mt-0.5 text-xs text-primary" numberOfLines={1}>
+                          {med.planName}
+                        </Text>
                       </View>
                       <View className="items-end gap-2">
                         <Badge
@@ -706,7 +688,7 @@ export default function DashboardScreen() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onPress={() => handleMarkAsTaken(med.medicationId, med.time)}
+                            onPress={() => handleMarkAsTaken(med.planId, med.medicationId, med.time, med.name, med.dosage)}
                             className="mt-2"
                           >
                             <Text className="text-xs">Mark as Taken</Text>
@@ -725,14 +707,14 @@ export default function DashboardScreen() {
                     No upcoming medications
                   </Text>
                   <Text className="mt-1 text-center text-sm text-muted-foreground">
-                    Add your medications to get started
+                    Create a medication plan to get started
                   </Text>
                   <Button
                     size="sm"
-                    onPress={() => Alert.alert('Add Medication', 'Feature coming soon')}
+                    onPress={() => router.push('/plan/add')}
                     className="mt-4"
                   >
-                    <Text className="text-sm">Add Medication</Text>
+                    <Text className="text-sm">Create Plan</Text>
                   </Button>
                 </View>
               </Animated.View>
@@ -786,7 +768,7 @@ export default function DashboardScreen() {
         </Animated.View>
 
         {/* Development Mode: Add Sample Data */}
-        {__DEV__ && medications.length === 0 && (
+        {__DEV__ && plans.length === 0 && (
           <Animated.View
             entering={FadeIn.delay(600).duration(300)}
             className="mx-6 mb-6 rounded-lg bg-info/10 p-4"
@@ -795,17 +777,34 @@ export default function DashboardScreen() {
               Development Mode - No Data
             </Text>
             <Text className="mt-1 text-xs text-muted-foreground">
-              Complete onboarding or add medications to see dashboard data
+              Complete onboarding or create a medication plan to see dashboard data
             </Text>
             <Button
               size="sm"
               variant="outline"
               className="mt-3"
               onPress={() => {
-                // Add sample medication
-                useMedicationStore.getState().addMedication({
-                  id: `med_${Date.now()}`,
+                const now = new Date();
+                const planId = `plan_${Date.now()}`;
+
+                // Add sample plan
+                addPlan({
+                  id: planId,
                   userId: user?.id || 'demo',
+                  planName: 'Daily Vitamins',
+                  condition: 'General Health',
+                  prescribedBy: 'Dr. Smith',
+                  medications: [],
+                  isActive: true,
+                  status: 'active',
+                  createdAt: now,
+                  updatedAt: now,
+                });
+
+                // Add sample medication to plan
+                addMedicationToPlan(planId, {
+                  id: `med_${Date.now()}`,
+                  planId: planId,
                   name: 'Aspirin',
                   dosage: '100',
                   dosageUnit: 'mg',
@@ -830,22 +829,22 @@ export default function DashboardScreen() {
                     onTime: true,
                     minutesAfter: 15,
                   },
-                  startDate: new Date(),
+                  startDate: now,
                   isActive: true,
-                  createdAt: new Date(),
+                  createdAt: now,
                 });
 
                 // Add activity
                 addActivity({
                   type: 'medication_added',
-                  title: 'Medication Added',
-                  description: 'Added Aspirin 100mg to your medications',
+                  title: 'Plan Created',
+                  description: 'Created Daily Vitamins plan with Aspirin 100mg',
                 });
 
-                Alert.alert('Success', 'Sample medication added!');
+                Alert.alert('Success', 'Sample plan with medication added!');
               }}
             >
-              <Text className="text-xs">Add Sample Medication</Text>
+              <Text className="text-xs">Add Sample Plan</Text>
             </Button>
           </Animated.View>
         )}
